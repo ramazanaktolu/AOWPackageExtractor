@@ -220,6 +220,12 @@ namespace Extractor
                 tmp = ReadAsType<byte[]>(ref fs, 1);
                 FileDetail fd = new FileDetail();
                 fd.Filename = name;
+                if (fd.Filename.Contains('\0'))
+                {
+                    var splitted = fd.Filename.Split('\0'); //for the .patch files. Patch files have packed file + extract location. so using 2 paths splitted by \0
+                    fd.Filename = splitted[0];
+                    fd.PatchFilename = splitted[1];
+                }
                 fd.Offset = address;
                 fd.PackedSize = compressSize;
                 fd.Size = filesize;
@@ -430,7 +436,7 @@ namespace Extractor
             public int Size { get; set; }
             public int PackedSize { get; set; }
             public int Offset { get; set; }
-
+            public string PatchFilename { get; set; }
             /// <summary>
             /// return format is filename(tab)offset(tab)size(tab)packedsize
             /// </summary>
