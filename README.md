@@ -33,3 +33,9 @@ Age of wushu package file extract and repack
 * * **offset**: start offset of packed file in the package (informational)
 * * **filesize**: File size after extract
 * * **packedsize**: reduced size in package file
+
+**Example usage**
+
+Open command prompt (cmd), if requires, run it as Administrator. Make sure cmd path is matches with Extractor.exe's directory
+
+	Extractor -i "D:\Age of wushu\res\text.package" -o "D:\Extracts\"
