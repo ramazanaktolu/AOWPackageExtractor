@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Extractor
 {
@@ -174,6 +175,11 @@ namespace Extractor
                     string timestamps = "";
                     foreach (var file in files)
                     {
+                        bool searched = IsSearched(file);
+                        if (!searched)
+                        {
+                            continue;
+                        }
                         Console.WriteLine($"Extracting: {file.Filename}");
                         timestamps += file.Filename + " = " + string.Join(" ", file.Timestamp.Select(s => s.ToString("X2"))) + Environment.NewLine;
                         filestream.Position = file.Offset;
@@ -233,11 +239,42 @@ namespace Extractor
                 files.Add(fd);
                 if (list)
                 {
-                    Console.WriteLine(fd.ToString());
+                    if (IsSearched(fd))
+                    {
+                        Console.WriteLine(fd.ToString());
+                    }
+                    
                 }
             }
             return files;
         }
+
+        static bool IsSearched(FileDetail fd)
+        {
+            if (searchList.Count() > 0)
+            {
+                if (!searchList.Any(a => fd.Filename.IndexOf(a, StringComparison.OrdinalIgnoreCase) != -1))
+                {
+                    return false;
+                }
+
+            }
+            if (regexList.Count() > 0)
+            {
+                bool proceed = false;
+                foreach (var item in regexList)
+                {
+                    var regex = new Regex(item);
+                    if (regex.IsMatch(fd.Filename))
+                    {
+                        proceed = true;
+                    }
+                }
+                return proceed;
+            }
+            return true;
+        }
+
         static Encoding encoding = Encoding.GetEncoding("windows-1254");
         static T ReadAsType<T>(ref FileStream fs, int strlen = 1)
         {
@@ -267,9 +304,10 @@ namespace Extractor
             }
         }
 
-        
-        
 
+
+        static List<string> searchList = new List<string>();
+        static List<string> regexList = new List<string>();
         static void parseARgs(string[] args)
         {
             if (args == null || args.Length == 0)
@@ -289,6 +327,24 @@ namespace Extractor
                 {
                     var enc = args[i + 1];
                     encoding = Encoding.GetEncoding(enc);
+                    i++;
+                }
+                else if ((arg.Equals("-s", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-search", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
+                {
+                    var search = args[i + 1];
+                    if (!searchList.Any(s => s.Equals(search, StringComparison.InvariantCultureIgnoreCase)))
+                    {
+                        searchList.Add(search);
+                    }
+                    i++;
+                }
+                else if ((arg.Equals("-r", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-regex", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
+                {
+                    var search = args[i + 1];
+                    if (!regexList.Any(s => s.Equals(search, StringComparison.InvariantCultureIgnoreCase)))
+                    {
+                        regexList.Add(search);
+                    }
                     i++;
                 }
                 else if ((arg.Equals("-cl", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-codepagelist", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
@@ -332,6 +388,14 @@ namespace Extractor
                 "-c,-codepage:", $"codepage for filenames. default codepage: {encoding.HeaderName}");
             Console.WriteLine("\t{0,-20}{1}", 
                 "-cl,-codepagelist:", "prints codepage list supported by your system");
+            Console.WriteLine("\t{0,-20}{1}",
+                "-s,-search:", "searchs in file name and shows/extracts files which matched.");
+            Console.WriteLine("\t{0,-20}{1}",
+                "", "this, can be used multiple times");
+            Console.WriteLine("\t{0,-20}{1}",
+                "-r,-regex:", "searchs in file name with regular expression patterns and shows/extracts");
+            Console.WriteLine("\t{0,-20}{1}",
+                "", "files which matched. this, can be used multiple times");
             Console.WriteLine("\t{0,-20}{1}", 
                 "-v,-version:", "this program's version");
             Console.WriteLine("\t{0,-20}{1}", 
