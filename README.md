@@ -8,8 +8,12 @@ Age of wushu package file extract and repack
 		-o,-output:         output directory to export package file.
 		-c,-codepage:       codepage for filenames. default codepage: windows-1254
 		-cl,-codepagelist:  prints codepage list supported by your system
+		-s,-search:         searchs in file name and shows/extracts files which matched.
+				    this, can be used multiple times
+		-r,-regex:          searchs in file name with regular expression patterns and shows/extracts
+				    files which matched. this, can be used multiple times
 		-v,-version:        this program's version
-		-h,-help:           shows help message.
+		-h,-help:           shows this help message.
 
 
 **Parameters**
