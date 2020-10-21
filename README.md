@@ -25,6 +25,11 @@ Age of wushu package file extract and repack
 
 * -cl, -codepagelist: Prints the list of codepages which your system are supported and you can use them.
 
+* -s, -search: Searchs the word in the file name. You can use that multiple times. Example: (-s word1 -s word2 -s word3).
+
+* -r, -regex: Searchs the word in the file name by using regular expression with joker characters. You can use that multiple times. Example: (-r word1 -r word2 -r word3).
+More info about using regular expression patterns, please follow that link. https://en.wikipedia.org/wiki/Regular_expression
+
 * -v, -version: This program's current build version. You can check that and you can compare if there is new updates.
 
 * -h, -help: Prints short version of this.
