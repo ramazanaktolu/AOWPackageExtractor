@@ -17,7 +17,10 @@ namespace Extractor
         static string input = "";
         static string output = "";
         static bool helpRequest = false;
+        static bool append = false;
         static bool extract = true;
+        static byte[] defaultTS = new byte[] { 0xDC, 0x07, 0x07, 0x1F, 0x06, 0x38, 0x23, 0x00, 0x00 };
+        static int nameattributesize = 28;//28
         static void Main(string[] args)
         {
             parseARgs(args);
@@ -47,9 +50,21 @@ namespace Extractor
                 return;
                 //throw new Exception($"File not found: {input}");
             }
+            if (append)
+            {
+                using (var fs = new FileStream(input, FileMode.Open, FileAccess.ReadWrite))
+                {
+                    fs.Position = fs.Length / 2;
+                    //fs.SetLength(fs.Length * 2);
+
+                }
+            }
             extract = Path.GetExtension(input).IndexOf(".lys", StringComparison.InvariantCultureIgnoreCase) == -1;
             if (!extract)
             {
+
+                
+
                 var lines = File.ReadAllLines(input);
                 List<FileDetail> filedetails = new List<FileDetail>();
                 
@@ -62,7 +77,7 @@ namespace Extractor
                     fd.Filename = file.Replace(inputDirectory, "");
                     FileInfo fi = new FileInfo(file);
                     fd.Size = (int)fi.Length;
-                    fd.Timestamp = new byte[] { 0xDC, 0x07, 0x07, 0x1F, 0x06, 0x38, 0x23, 0x00, 0x00 };
+                    fd.Timestamp = defaultTS;
                     filedetails.Add(fd);
                 }
                 foreach(var line in lines)
@@ -82,7 +97,7 @@ namespace Extractor
                 Directory.CreateDirectory(tmpPath);
                 try
                 {
-                    int nameattributesize = 28;//28
+                    
                     int headersize = 19;//basic header length, like file identity, file count, header size
                     int totalFileSize = 0;
                     foreach (var file in filedetails)
@@ -161,7 +176,7 @@ namespace Extractor
             }
             else
             {
-                FileStream filestream = new FileStream(input, FileMode.Open);
+                FileStream filestream = new FileStream(input, FileMode.Open, FileAccess.ReadWrite);
 
                 var files = GetFiles(ref filestream);
                 if (!list)
@@ -210,21 +225,23 @@ namespace Extractor
             var id = ReadAsType<string>(ref fs,4);
 
             var namesize = ReadAsType<short>(ref fs);
-            var zeros = ReadAsType<int>(ref fs);
+            _ = ReadAsType<int>(ref fs); //Just reads zero
             var filecount = ReadAsType<int>(ref fs);
             var headsize = ReadAsType<int>(ref fs);
             var tmp = ReadAsType<byte[]>(ref fs, 1);
             for (int i = 0; i < filecount; i++)
             {
+                FileDetail fd = new FileDetail();
+                fd.HeaderOffset = (int)fs.Position;
                 namesize = ReadAsType<short>(ref fs);
                 int address = ReadAsType<int>(ref fs);
-                zeros = ReadAsType<int>(ref fs);
+                _ = ReadAsType<int>(ref fs); //Just reads zero
                 int filesize = ReadAsType<int>(ref fs);
                 int compressSize = ReadAsType<int>(ref fs);
                 byte[] timestamp = ReadAsType<byte[]>(ref fs, 9);
                 string name = ReadAsType<string>(ref fs, namesize - 28);
                 tmp = ReadAsType<byte[]>(ref fs, 1);
-                FileDetail fd = new FileDetail();
+                
                 fd.Filename = name;
                 if (fd.Filename.Contains('\0'))
                 {
@@ -246,7 +263,58 @@ namespace Extractor
                     
                 }
             }
+            
             return files;
+        }
+
+        static bool AppendFiles(ref FileStream fs)
+        {
+            var tmpPath = Environment.CurrentDirectory + "\\" + Guid.NewGuid().ToString() + "\\";
+            Directory.CreateDirectory(tmpPath);
+            var filelist = GetFiles(ref fs);
+            foreach (var file in appendFile)
+            {
+                if(string.IsNullOrWhiteSpace(file.ReplaceName))
+                {
+                    var paths = filelist
+                        .Select(s => s.Filename.Substring(0, s.Filename.LastIndexOf('/') + 1))
+                        .Distinct()
+                        .OrderByDescending(o => o.Length)
+                        .ToArray();
+                    foreach(var path in paths)
+                    {
+                        if (file.LocalFile.Contains(path))
+                        {
+                            file.ReplaceName = path + Path.GetFileName(file.LocalFile);
+                            break;
+                        }
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(file.ReplaceName))
+                {
+                    Console.WriteLine($"Error: replacement file name is not valid");
+                    break;
+                }
+                FileDetail fd = new FileDetail();
+                int packedSize = Compress(file.LocalFile, tmpPath + Path.GetFileName(file.LocalFile));
+                fd.Filename = file.ReplaceName;
+                fd.PackedSize = packedSize;
+                fd.Size = (int)new FileInfo(file.LocalFile).Length;
+                fd.Timestamp = defaultTS;
+                var lastfile = filelist.OrderByDescending(o => o.Offset).First();
+                fd.Offset = lastfile.Offset + lastfile.PackedSize + 1;
+                var firstFile = filelist.OrderBy(o => o.Offset).First();
+                //fd.Offset = lastfile.Offset + lastfile.PackedSize + 1;
+                //filelist.Add(fd);
+                int extendheader = fd.Filename.Length + nameattributesize;
+                using (var sw = new BinaryWriter(fs))
+                {
+                    //sw.
+                }
+            }
+
+            Directory.Delete(tmpPath, true);
+            return false;
         }
 
         static bool IsSearched(FileDetail fd)
@@ -308,6 +376,9 @@ namespace Extractor
 
         static List<string> searchList = new List<string>();
         static List<string> regexList = new List<string>();
+        static List<AppendFile> appendFile = new List<AppendFile>();
+        static List<string> removeFiles = new List<string>();
+        public 
         static void parseARgs(string[] args)
         {
             if (args == null || args.Length == 0)
@@ -346,6 +417,29 @@ namespace Extractor
                         regexList.Add(search);
                     }
                     i++;
+                }
+                else if ((arg.Equals("-af", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-appendfile", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
+                {
+                    var filename = args[i + 1];
+                    string replacename = string.Empty;
+                    int plus = 1;
+                    if (args[i + 2].Equals("as", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        replacename = args[i + 3];
+                        plus = 3;
+                    }
+                    appendFile.Add(new AppendFile() { LocalFile = filename, ReplaceName = replacename });
+                    i += plus;
+                }
+                else if ((arg.Equals("-rf", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-removefile", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
+                {
+                    var filename = args[i + 1];
+                    removeFiles.Add(filename);
+                    i++;
+                }
+                else if ((arg.Equals("-a", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-append", StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    append = true;
                 }
                 else if ((arg.Equals("-cl", StringComparison.InvariantCultureIgnoreCase) || arg.Equals("-codepagelist", StringComparison.InvariantCultureIgnoreCase)) && args.Length >= i)
                 {
@@ -406,7 +500,7 @@ namespace Extractor
         {
             var outputStream = new MemoryStream();
             using (var compressedStream = new MemoryStream(data))
-            using (var inputStream = new ICSharpCode.SharpZipLib.Zip.Compression.Streams.InflaterInputStream(compressedStream, new ICSharpCode.SharpZipLib.Zip.Compression.Inflater(false)))
+            using (var inputStream = new ICSharpCode.SharpZipLib.Zip.Compression.Streams.InflaterInputStream(compressedStream))
             {
                 inputStream.CopyTo(outputStream);
                 outputStream.Position = 0;
@@ -501,6 +595,7 @@ namespace Extractor
             public int PackedSize { get; set; }
             public int Offset { get; set; }
             public string PatchFilename { get; set; }
+            public int HeaderOffset { get; set; }
             /// <summary>
             /// return format is filename(tab)offset(tab)size(tab)packedsize
             /// </summary>
@@ -509,6 +604,12 @@ namespace Extractor
             {
                 return $"{Filename}\t{Offset}\t{Size}\t{PackedSize}";
             }
+        }
+
+        public class AppendFile
+        {
+            public string LocalFile { get; set; }
+            public string ReplaceName { get; set; }
         }
     }
 }
