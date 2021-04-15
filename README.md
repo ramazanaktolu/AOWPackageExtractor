@@ -8,8 +8,12 @@ Age of wushu package file extract and repack
 		-o,-output:         output directory to export package file.
 		-c,-codepage:       codepage for filenames. default codepage: windows-1254
 		-cl,-codepagelist:  prints codepage list supported by your system
+		-s,-search:         searchs in file name and shows/extracts files which matched.
+				    this, can be used multiple times
+		-r,-regex:          searchs in file name with regular expression patterns and shows/extracts
+				    files which matched. this, can be used multiple times
 		-v,-version:        this program's version
-		-h,-help:           shows help message.
+		-h,-help:           shows this help message.
 
 
 **Parameters**
@@ -20,6 +24,11 @@ Age of wushu package file extract and repack
 * -c, -codepage: Determine a correct codepage for filenames. When you have Chinese characters inside the package, you should use a codepage that also supports Chinese characters. otherwise file names will be corrupted after extraction and you will have problem with repack them. Default value is "windows-1254" (Turkish) codepage for this parameter, it supports a lot of character sets.
 
 * -cl, -codepagelist: Prints the list of codepages which your system are supported and you can use them.
+
+* -s, -search: Searchs the word in the file name. You can use that multiple times. Example: (-s word1 -s word2 -s "word 3").
+
+* -r, -regex: Searchs the word in the file name by using regular expression with joker characters. You can use that multiple times. Example: (-r word1 -r word2 -r "word 3").
+More info about using regular expression patterns, please follow that link. https://en.wikipedia.org/wiki/Regular_expression
 
 * -v, -version: This program's current build version. You can check that and you can compare if there is new updates.
 
