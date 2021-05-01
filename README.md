@@ -1,4 +1,4 @@
-# AOWPackageExtractor
+# AOW Package Extractor
 Age of wushu package file extract and repack
 
 	Usage: Extractor.exe [options]
