@@ -494,6 +494,8 @@ namespace Extractor
                 "-v,-version:", "this program's version");
             Console.WriteLine("\t{0,-20}{1}", 
                 "-h,-help:", "shows this help message.");
+            Console.WriteLine();
+            Console.WriteLine("Output-Format: file-name{tab}offset{tab}file-size{tab}packed-size");
         }
 
         public static Stream Decompress(byte[] data)
